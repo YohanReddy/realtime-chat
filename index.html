@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Socket.IO chat</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: sans-serif;
+    }
+
+    #messages {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      height: calc(100vh - 100px);
+      overflow-y: scroll;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    #messages li {
+      padding: 10px;
+      display: flex;
+      align-items: center;
+    }
+
+    #messages li:nth-child(odd) {
+      background-color: #f5f5f5;
+    }
+
+    #messages li span {
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    #form {
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    #username,
+      #input {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        margin-right: 10px;
+      }
+
+    #inputBox {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-right: 10px;
+      width: 70%; /* Adjust width as needed */
+    }
+
+    button {
+      background-color: #333;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .system-message {
+      font-style: italic;
+      color: #666;
+    }
+
+    #typingMessage {
+      font-style: italic;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div id="username-container">
+    <h1>Welcome!</h1>
+    <p>Enter your username to join the chat:</p>
+    <input id="username" type="text" placeholder="Enter Username">
+    <button id="join-button">Join</button>
+  </div>
+  <ul id="messages"></ul>
+  <form id="form" action="">
+    <input id="inputBox" autocomplete="off">
+    <button id="sendButton">Send</button>
+  </form>
+  <div id="typingMessage"></div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const messages = document.getElementById('messages');
+    const form = document.getElementById('form');
+    const usernameInput = document.getElementById('username');
+    const inputBox = document.getElementById('inputBox');
+    const sendButton = document.getElementById('sendButton');
+    const joinButton = document.getElementById('join-button');
+    const usernameContainer = document.getElementById('username-container');
+    const typingMessage = document.getElementById('typingMessage');
+
+    joinButton.addEventListener('click', function() {
+      if (!usernameInput.value) {
+        alert("Please enter a username!");
+        return;
+      }
+      const username = usernameInput.value;
+
+      // Store username for later use (e.g., send with messages)
+      socket.emit('join', { username: username });
+
+      messages.style.display = 'block'; // Show messages list
+      form.style.display = 'flex'; // Show chat form
+      usernameInput.style.display = 'none';
+      usernameContainer.style.display = 'none'; // Hide username container
+    });
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (!usernameInput.value) {
+        alert("Please enter a username!");
+        return;
+      }
+      const username = usernameInput.value;
+      const msg = inputBox.value;
+      inputBox.value = '';
+      socket.emit('chat message', { username: username, message: msg });
+    });
+
+    inputBox.addEventListener('input', function() {
+      const username = usernameInput.value;
+      const inputValue = inputBox.value;
+      socket.emit('typing', { username: username, inputValue: inputValue }); // Notify typing event
+    });
+
+    socket.on('chat message', function(data) {
+      const username = data.username;
+      const message = data.message;
+      addMessage(username, message);
+    });
+
+    socket.on('user joined', function(data) {
+      const username = data.username;
+      const message = `${username} has joined the chat!`;
+      addSystemMessage(message);
+    });
+
+    socket.on('typing', function(data) {
+      const typingUsername = data.username;
+      const inputValue = data.inputValue;
+      showTypingMessage(typingUsername, inputValue); // Display typing message
+    });
+
+    function addMessage(username, message) {
+      const item = document.createElement('li');
+      item.innerHTML = `<span>${username}: </span>${message}`;
+      messages.appendChild(item);
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function addSystemMessage(message) {
+      const item = document.createElement('li');
+      item.classList.add('system-message');
+      item.textContent = message;
+      messages.appendChild(item);
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function showTypingMessage(username, inputValue) {
+      if (inputValue.trim() !== '') {
+        typingMessage.textContent = `${username} is typing: ${inputValue}`;
+      } else {
+        typingMessage.textContent = '';
+      }
+    }
+  </script>
+</body>
+</html>
