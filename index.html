@@ -17,6 +17,7 @@
       overflow-y: scroll;
       border: 1px solid #ccc;
       border-radius: 5px;
+      display: none;
     }
 
     #messages li {
@@ -37,6 +38,7 @@
     #form {
       align-items: center;
       margin-top: 20px;
+      display: none;
     }
 
     #username,
@@ -52,7 +54,7 @@
       border: 1px solid #ccc;
       border-radius: 5px;
       margin-right: 10px;
-      width: 70%; /* Adjust width as needed */
+      width: 70%;
     }
 
     button {
@@ -87,7 +89,6 @@
     <input id="inputBox" autocomplete="off">
     <button id="sendButton">Send</button>
   </form>
-  <div id="typingMessage"></div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -116,17 +117,34 @@
       usernameContainer.style.display = 'none'; // Hide username container
     });
 
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      if (!usernameInput.value) {
-        alert("Please enter a username!");
-        return;
-      }
-      const username = usernameInput.value;
-      const msg = inputBox.value;
-      inputBox.value = '';
-      socket.emit('chat message', { username: username, message: msg });
-    });
+// Event listener for form submission (send button / Enter key)
+form.addEventListener('submit', function(e) {
+  e.preventDefault();
+  if (!usernameInput.value) {
+    alert("Please enter a username!");
+    return;
+  }
+
+  const username = usernameInput.value;
+  const msg = inputBox.value.trim(); // Trim whitespace from the message
+
+  if (!msg) {
+    alert("Please enter a message!");
+    return;
+  }
+
+  inputBox.value = '';
+
+  // Remove the typing message if it exists
+  if (typingMessageElement) {
+    typingMessageElement.parentNode.removeChild(typingMessageElement);
+    typingMessageElement = null; // Reset the typing message element
+  }
+
+  socket.emit('chat message', { username: username, message: msg });
+});
+
+
 
     inputBox.addEventListener('input', function() {
       const username = usernameInput.value;
@@ -137,6 +155,12 @@
     socket.on('chat message', function(data) {
       const username = data.username;
       const message = data.message;
+
+      if (typingMessageElement) {
+    typingMessageElement.parentNode.removeChild(typingMessageElement);
+    typingMessageElement = null; // Reset the typing message element
+  }
+
       addMessage(username, message);
     });
 
@@ -167,13 +191,51 @@
       window.scrollTo(0, document.body.scrollHeight);
     }
 
-    function showTypingMessage(username, inputValue) {
-      if (inputValue.trim() !== '') {
-        typingMessage.textContent = `${username} is typing: ${inputValue}`;
-      } else {
-        typingMessage.textContent = '';
-      }
-    }
+
+
+
+// Define a global variable to store the typing message
+let typingMessageElement = null;
+
+function showTypingMessage(username, inputValue) {
+  // Remove the typing message if it exists
+  if (typingMessageElement) {
+    typingMessageElement.parentNode.removeChild(typingMessageElement);
+  }
+
+  // Create a new typing message
+  typingMessageElement = document.createElement('li');
+  typingMessageElement.classList.add('typing-message');
+  typingMessageElement.dataset.username = username;
+  typingMessageElement.textContent = `${username}: ${inputValue}`;
+
+  // Append the typing message to the messages list
+  messages.appendChild(typingMessageElement);
+
+  // Scroll to the bottom of the messages list
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function showSentMessage(username, message) {
+  // Remove the typing message if it exists
+  if (typingMessageElement) {
+    typingMessageElement.parentNode.removeChild(typingMessageElement);
+    typingMessageElement = null; // Reset the typing message element
+  }
+
+  // Create a new sent message element
+  const sentMessage = document.createElement('li');
+  sentMessage.textContent = `${username}: ${message}`;
+
+  // Append the sent message to the messages list
+  messages.appendChild(sentMessage);
+
+  // Scroll to the bottom of the messages list
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+
+
   </script>
 </body>
 </html>
